@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/theme/app_gradients.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../providers/auth_notifier.dart';
+import '../providers/auth_state.dart';
+import '../widgets/auth_hero.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -82,130 +87,201 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authNotifierProvider);
 
-    return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          // Capping the width keeps the form readable on tablets and web
-          // instead of stretching edge to edge.
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Form(
-              key: _formKey,
-              child: AutofillGroup(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'PokeBattleGround',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
+    return GlassScaffold(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final form = ConstrainedBox(
+            // Capping the width keeps the form readable on tablets and web
+            // instead of stretching edge to edge.
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: EntranceAnimation(
+              delay: const Duration(milliseconds: 150),
+              child: _buildFormCard(context, auth),
+            ),
+          );
+
+          if (constraints.maxWidth >= AppBreakpoints.wide) {
+            return Row(
+              children: [
+                const Expanded(
+                  child: Center(
+                    child: EntranceAnimation(child: AuthHero(scale: 1.35)),
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: form,
                     ),
-                    const SizedBox(height: 8),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.lg,
+              ),
+              child: Column(
+                children: [
+                  const EntranceAnimation(child: AuthHero(scale: 0.9)),
+                  const SizedBox(height: AppSpacing.lg),
+                  form,
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFormCard(BuildContext context, AuthState auth) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return GlassContainer(
+      borderRadius: AppRadii.xlAll,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Form(
+        key: _formKey,
+        child: AutofillGroup(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GlassSegmentedControl(
+                labels: const ['Log in', 'Sign up'],
+                selectedIndex: _isRegister ? 1 : 0,
+                onChanged: auth.isSubmitting
+                    ? null
+                    : (index) {
+                        if ((index == 1) != _isRegister) _toggleMode();
+                      },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              AnimatedSwitcher(
+                duration: AppDurations.medium,
+                child: Column(
+                  key: ValueKey(_isRegister),
+                  children: [
                     Text(
                       _isRegister ? 'Create your account' : 'Welcome back',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: textTheme.headlineSmall,
                     ),
-                    const SizedBox(height: 24),
-                    TextFormField(
-                      controller: _usernameController,
-                      enabled: !auth.isSubmitting,
-                      autofillHints: const [AutofillHints.username],
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: _validateUsername,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      enabled: !auth.isSubmitting,
-                      obscureText: _obscurePassword,
-                      autofillHints: [
-                        _isRegister
-                            ? AutofillHints.newPassword
-                            : AutofillHints.password,
-                      ],
-                      textInputAction: _isRegister
-                          ? TextInputAction.next
-                          : TextInputAction.done,
-                      onFieldSubmitted: (_) {
-                        if (!_isRegister) _submit();
-                      },
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                        ),
-                      ),
-                      validator: _validatePassword,
-                    ),
-                    if (_isRegister) ...[
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _confirmController,
-                        enabled: !auth.isSubmitting,
-                        obscureText: _obscurePassword,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _submit(),
-                        decoration: const InputDecoration(
-                          labelText: 'Confirm password',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: _validateConfirm,
-                      ),
-                    ],
-                    if (auth.errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          auth.errorMessage!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: auth.isSubmitting ? null : _submit,
-                      child: auth.isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(_isRegister ? 'Create account' : 'Log in'),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: auth.isSubmitting ? null : _toggleMode,
-                      child: Text(
-                        _isRegister
-                            ? 'Already have an account? Log in'
-                            : "New here? Create an account",
-                      ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      _isRegister
+                          ? 'Pick a trainer name and start battling'
+                          : 'Sign in to continue your journey',
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyMedium,
                     ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: AppSpacing.lg),
+              TextFormField(
+                controller: _usernameController,
+                enabled: !auth.isSubmitting,
+                autofillHints: const [AutofillHints.username],
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  prefixIcon: Icon(Icons.person_rounded),
+                ),
+                validator: _validateUsername,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _passwordController,
+                enabled: !auth.isSubmitting,
+                obscureText: _obscurePassword,
+                autofillHints: [
+                  _isRegister
+                      ? AutofillHints.newPassword
+                      : AutofillHints.password,
+                ],
+                textInputAction: _isRegister
+                    ? TextInputAction.next
+                    : TextInputAction.done,
+                onFieldSubmitted: (_) {
+                  if (!_isRegister) _submit();
+                },
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: const Icon(Icons.lock_rounded),
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword
+                        ? 'Show password'
+                        : 'Hide password',
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                validator: _validatePassword,
+              ),
+              AnimatedSize(
+                duration: AppDurations.medium,
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: _isRegister
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.md),
+                        child: TextFormField(
+                          controller: _confirmController,
+                          enabled: !auth.isSubmitting,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(),
+                          decoration: const InputDecoration(
+                            labelText: 'Confirm password',
+                            prefixIcon: Icon(Icons.verified_user_rounded),
+                          ),
+                          validator: _validateConfirm,
+                        ),
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
+              AnimatedSize(
+                duration: AppDurations.medium,
+                alignment: Alignment.topCenter,
+                child: auth.errorMessage != null
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.md),
+                        child: MessageBanner.error(auth.errorMessage!),
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              GradientButton(
+                label: _isRegister ? 'Create account' : 'Log in',
+                icon: _isRegister
+                    ? Icons.person_add_alt_1_rounded
+                    : Icons.login_rounded,
+                gradient: AppGradients.pokeBall,
+                isLoading: auth.isSubmitting,
+                onPressed: _submit,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextButton(
+                onPressed: auth.isSubmitting ? null : _toggleMode,
+                child: Text(
+                  _isRegister
+                      ? 'Already have an account? Log in'
+                      : 'New here? Create an account',
+                ),
+              ),
+            ],
           ),
         ),
       ),

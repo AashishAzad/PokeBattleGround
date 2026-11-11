@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../../user/data/models/app_user.dart';
 import '../../../user/presentation/providers/current_user_provider.dart';
 import '../providers/type_clash_game_notifier.dart';
@@ -52,11 +55,11 @@ class _TypeClashScreenState extends ConsumerState<TypeClashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Type Clash')),
+    return GlassScaffold(
+      title: 'Type Clash',
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: _mode == _EntryMode.none
               ? _buildModeSelector()
               : _buildMultiplayerFlow(),
@@ -66,36 +69,51 @@ class _TypeClashScreenState extends ConsumerState<TypeClashScreen> {
   }
 
   Widget _buildModeSelector() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text(
-          'Type Clash',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 24),
-        ElevatedButton(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const TypeClashSinglePlayerScreen(),
-            ),
+    return EntranceAnimation(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'How do you want to battle?',
+            style: Theme.of(context).textTheme.headlineSmall,
+            textAlign: TextAlign.center,
           ),
-          child: const Text('Single Player'),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: () => setState(() => _mode = _EntryMode.multi),
-          child: const Text('Multiplayer'),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.lg),
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            alignment: WrapAlignment.center,
+            children: [
+              OptionCard(
+                title: 'Single Player',
+                subtitle: 'Pick a type and battle solo',
+                icon: Icons.person_rounded,
+                color: AppColors.sunsetOrange,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TypeClashSinglePlayerScreen(),
+                  ),
+                ),
+              ),
+              OptionCard(
+                title: 'Multiplayer',
+                subtitle: 'Claim a type against real trainers',
+                icon: Icons.groups_rounded,
+                color: AppColors.skyCyan,
+                onTap: () => setState(() => _mode = _EntryMode.multi),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildMultiplayerFlow() {
     final userAsync = ref.watch(currentUserProvider);
     return userAsync.when(
-      loading: () => const CircularProgressIndicator(),
-      error: (err, _) => Text('Failed to load profile: $err'),
+      loading: () => const LoadingView(),
+      error: (err, _) => ErrorView(message: 'Failed to load profile: $err'),
       data: (user) => _MultiplayerBody(user: user),
     );
   }
@@ -132,14 +150,7 @@ class _MultiplayerBody extends ConsumerWidget {
         );
         break;
       case TypeClashPhase.waitingForBattle:
-        content = const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Battle starting...'),
-          ],
-        );
+        content = const LoadingView(message: 'Battle starting...');
         break;
       case TypeClashPhase.battleReady:
         content = BubbleArenaView(
@@ -153,18 +164,13 @@ class _MultiplayerBody extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (gameState.errorMessage != null) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppBreakpoints.contentMaxWidth,
             ),
-            child: Text(
-              gameState.errorMessage!,
-              style: const TextStyle(color: Colors.red),
-            ),
+            child: MessageBanner.error(gameState.errorMessage!),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
         ],
         content,
       ],

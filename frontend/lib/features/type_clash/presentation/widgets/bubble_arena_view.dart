@@ -4,6 +4,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/theme/app_gradients.dart';
+import '../../../../core/utils/string_extensions.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../data/models/bubble_battle_result.dart';
 import '../../data/models/bubble_clash_event.dart';
 import 'type_colors.dart';
@@ -107,7 +112,10 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
   }
 
   Offset _randomVelocity() {
-    return Offset((_random.nextDouble() - 0.5) * 40, (_random.nextDouble() - 0.5) * 40);
+    return Offset(
+      (_random.nextDouble() - 0.5) * 40,
+      (_random.nextDouble() - 0.5) * 40,
+    );
   }
 
   // Continuous idle-floating physics — runs every frame, but skips any
@@ -240,7 +248,10 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
   }) async {
     final startA = a.position;
     final startB = b.position;
-    final controller = AnimationController(vsync: this, duration: _seekDuration);
+    final controller = AnimationController(
+      vsync: this,
+      duration: _seekDuration,
+    );
     controller.addListener(() {
       if (!mounted) return;
       setState(() {
@@ -264,8 +275,11 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Battle!', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 12),
+        GradientText(
+          'Battle!',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        const SizedBox(height: AppSpacing.sm + 4),
         LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
@@ -274,16 +288,30 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
                 : 400.0;
             _arenaSize = Size(width, height);
 
-            return Container(
+            // No backdrop blur here: the arena repaints every frame, and a
+            // live blur underneath would cost far more than it adds.
+            return GlassContainer(
               width: width,
               height: height,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(20),
+              blur: 0,
+              padding: EdgeInsets.zero,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.backgroundDeep.withValues(alpha: 0.55),
+                  AppColors.backgroundHigh.withValues(alpha: 0.45),
+                ],
               ),
-              clipBehavior: Clip.hardEdge,
               child: Stack(
                 children: [
+                  Center(
+                    child: PokeBall(
+                      size: height * 0.6,
+                      style: PokeBallStyle.outline,
+                      outlineColor: Colors.white.withValues(alpha: 0.06),
+                    ),
+                  ),
                   for (final bubble in _bubbles.where((b) => b.alive))
                     _buildBubble(bubble),
                 ],
@@ -327,32 +355,42 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
                   height: r * 2,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: color.withOpacity(0.25),
+                    gradient: RadialGradient(
+                      center: const Alignment(-0.35, -0.4),
+                      colors: [
+                        Colors.white.withValues(alpha: 0.55),
+                        color.withValues(alpha: 0.55),
+                        color.withValues(alpha: 0.25),
+                      ],
+                      stops: const [0, 0.45, 1],
+                    ),
                     border: Border.all(
                       color: bubble.flashing ? Colors.white : color,
                       width: bubble.flashing ? 3 : 2,
                     ),
-                    boxShadow: bubble.flashing
-                        ? [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.6),
-                              blurRadius: 12,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (bubble.flashing ? Colors.white : color)
+                            .withValues(alpha: bubble.flashing ? 0.7 : 0.35),
+                        blurRadius: bubble.flashing ? 16 : 10,
+                        spreadRadius: bubble.flashing ? 3 : 0,
+                      ),
+                    ],
                   ),
                   alignment: Alignment.center,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(icon, color: color, size: 18),
+                      Icon(icon, color: Colors.white, size: 18),
                       Text(
                         bubble.power.round().toString(),
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.bold,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
                           fontSize: 11,
+                          shadows: [
+                            Shadow(color: Colors.black54, blurRadius: 3),
+                          ],
                         ),
                       ),
                     ],
@@ -365,9 +403,10 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
                   child: Text(
                     bubble.floatingText!,
                     style: const TextStyle(
-                      color: Colors.redAccent,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      color: AppColors.pokeRed,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      shadows: [Shadow(color: Colors.black, blurRadius: 4)],
                     ),
                   ),
                 ),
@@ -380,30 +419,61 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
 
   Widget _buildWinnerBanner(BuildContext context) {
     final winnerType = widget.result.winnerType;
-    return Column(
-      children: [
-        if (winnerType != null) ...[
-          Icon(Icons.emoji_events, color: colorForType(winnerType), size: 48),
-          const SizedBox(height: 8),
-          Text(
-            '${_capitalize(winnerType)} wins!',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          if (widget.result.winnerOwnerUsername != null)
-            Text('Claimed by ${widget.result.winnerOwnerUsername}'),
-        ] else
-          const Text('No winner — draw!'),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: widget.onPlayAgain,
-          child: const Text('Play Again'),
+    final textTheme = Theme.of(context).textTheme;
+    final accent = winnerType != null ? colorForType(winnerType) : null;
+
+    return EntranceAnimation(
+      child: GlassContainer(
+        constraints: const BoxConstraints(maxWidth: 340),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        borderColor: accent?.withValues(alpha: 0.6),
+        child: Column(
+          children: [
+            if (winnerType != null) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm + 4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent!.withValues(alpha: 0.25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.5),
+                      blurRadius: 24,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.emoji_events_rounded,
+                  color: AppColors.gold,
+                  size: 44,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm + 4),
+              Text(
+                '${winnerType.capitalized} wins!',
+                style: textTheme.headlineSmall,
+              ),
+              if (widget.result.winnerOwnerUsername != null)
+                Text(
+                  'Claimed by ${widget.result.winnerOwnerUsername}',
+                  style: textTheme.bodyMedium,
+                ),
+            ] else
+              Text('No winner — draw!', style: textTheme.headlineSmall),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: GradientButton(
+                label: 'Play Again',
+                icon: Icons.replay_rounded,
+                gradient: AppGradients.electric,
+                foregroundColor: AppColors.textOnAccent,
+                onPressed: widget.onPlayAgain,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
-
-  String _capitalize(String s) =>
-      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }

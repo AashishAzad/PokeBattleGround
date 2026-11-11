@@ -3,6 +3,10 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/theme/app_gradients.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../data/models/round_start.dart';
 
 /// Renders the round's Pokémon sprite behind a blur filter whose intensity
@@ -62,36 +66,114 @@ class _BlurredPokemonRevealState extends State<BlurredPokemonReveal> {
       widget.round.durationSeconds,
     );
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Round ${widget.round.roundNumber} / ${widget.round.totalRounds}',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-            child: Image.network(
-              widget.round.spriteUrl,
-              width: 220,
-              height: 220,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const SizedBox(
-                width: 220,
-                height: 220,
-                child: Icon(Icons.help_outline, size: 100),
+    final timeLeft = 1 - progress;
+    final urgent = timeLeft <= 0.25;
+
+    return GlassContainer(
+      constraints: const BoxConstraints(maxWidth: 360),
+      borderRadius: AppRadii.xlAll,
+      padding: const EdgeInsets.all(AppSpacing.lg - 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              _Pill(
+                icon: Icons.flag_rounded,
+                label:
+                    'Round ${widget.round.roundNumber} / ${widget.round.totalRounds}',
+                color: AppColors.skyCyan,
+              ),
+              const Spacer(),
+              _Pill(
+                icon: Icons.timer_rounded,
+                label: '${remaining.ceil()}s left',
+                color: urgent ? AppColors.pokeRed : AppColors.electricYellow,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          // Scales the stage down on very narrow phones instead of overflowing.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: SizedBox.square(
+              dimension: 240,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.skyCyan.withValues(alpha: 0.35),
+                          AppColors.skyCyan.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                  ClipRRect(
+                    borderRadius: AppRadii.lgAll,
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(
+                        sigmaX: sigma,
+                        sigmaY: sigma,
+                      ),
+                      child: PokemonArtworkImage(
+                        url: widget.round.spriteUrl,
+                        size: 220,
+                        shadow: false,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        LinearProgressIndicator(value: progress),
-        const SizedBox(height: 4),
-        Text('${remaining.ceil()}s left'),
-      ],
+          const SizedBox(height: AppSpacing.md),
+          GradientProgressBar(
+            value: timeLeft,
+            duration: const Duration(milliseconds: 120),
+            gradient: urgent ? AppGradients.danger : AppGradients.ocean,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _Pill({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: AppDurations.medium,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.18),
+        borderRadius: AppRadii.pillAll,
+        border: Border.all(color: color.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

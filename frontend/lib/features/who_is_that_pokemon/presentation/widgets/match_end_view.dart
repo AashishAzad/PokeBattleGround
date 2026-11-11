@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/theme/app_gradients.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../data/models/match_end.dart';
 
 class MatchEndView extends StatelessWidget {
@@ -16,28 +20,50 @@ class MatchEndView extends StatelessWidget {
   Widget build(BuildContext context) {
     final sorted = [...finalScores]..sort((a, b) => b.score.compareTo(a.score));
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.emoji_events, color: Colors.amber, size: 48),
-        const SizedBox(height: 8),
-        Text('Match Over!', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 16),
-        ...sorted.asMap().entries.map((entry) {
-          final rank = entry.key + 1;
-          final score = entry.value;
-          return ListTile(
-            leading: CircleAvatar(child: Text('$rank')),
-            title: Text(score.username),
-            trailing: Text(
-              '${score.score} pts',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          );
-        }),
-        const SizedBox(height: 16),
-        ElevatedButton(onPressed: onPlayAgain, child: const Text('Play Again')),
-      ],
+    return EntranceAnimation(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: GlassContainer(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.emoji_events_rounded,
+                color: AppColors.gold,
+                size: 56,
+                shadows: [Shadow(color: AppColors.gold, blurRadius: 24)],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              GradientText(
+                'Match Over!',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              for (final (index, score) in sorted.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: PlayerTile(
+                    rank: index + 1,
+                    username: score.username,
+                    trailing: '${score.score} pts',
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                width: double.infinity,
+                child: GradientButton(
+                  label: 'Play Again',
+                  icon: Icons.replay_rounded,
+                  gradient: AppGradients.electric,
+                  foregroundColor: AppColors.textOnAccent,
+                  onPressed: onPlayAgain,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

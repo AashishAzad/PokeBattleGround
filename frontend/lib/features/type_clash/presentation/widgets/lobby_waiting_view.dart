@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/string_extensions.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../data/models/lobby_player.dart';
 
 class LobbyWaitingView extends StatelessWidget {
@@ -14,31 +16,10 @@ class LobbyWaitingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '${_capitalize(difficulty)} Lobby',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 8),
-        const CircularProgressIndicator(),
-        const SizedBox(height: 16),
-        Text(
-          'Waiting for players to join...',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 24),
-        ...players.map(
-          (p) => ListTile(
-            leading: const Icon(Icons.person),
-            title: Text(p.username),
-          ),
-        ),
-      ],
+    return LobbyWaitingPanel(
+      title: '${difficulty.capitalized} Lobby',
+      subtitle: 'Waiting for players to join...',
+      usernames: [for (final p in players) p.username],
     );
   }
-
-  String _capitalize(String s) =>
-      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }

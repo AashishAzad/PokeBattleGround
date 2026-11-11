@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/auth_gate.dart';
 
 void main() {
@@ -15,7 +16,7 @@ class PokeBattleGroundApp extends StatelessWidget {
     return MaterialApp(
       title: 'PokeBattleGround',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: Colors.red, useMaterial3: true),
+      theme: AppTheme.dark,
       // AuthGate decides between the splash, the login screen, and Home.
       home: const AuthGate(),
     );
