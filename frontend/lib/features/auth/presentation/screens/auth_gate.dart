@@ -7,9 +7,6 @@ import '../providers/auth_state.dart';
 import 'auth_screen.dart';
 import 'splash_screen.dart';
 
-/// The app's single entry decision: no screen anywhere else needs its own
-/// "am I logged in?" check, because nothing behind this gate can be
-/// reached while signed out.
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
 

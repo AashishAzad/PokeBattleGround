@@ -97,7 +97,7 @@ class _TypeClashScreenState extends ConsumerState<TypeClashScreen> {
               ),
               OptionCard(
                 title: 'Multiplayer',
-                subtitle: 'Claim a type against real trainers',
+                subtitle: 'Battle real trainers live',
                 icon: Icons.groups_rounded,
                 color: AppColors.skyCyan,
                 onTap: () => setState(() => _mode = _EntryMode.multi),

@@ -15,6 +15,12 @@ class OptionCard extends StatelessWidget {
   final VoidCallback onTap;
   final double width;
 
+  /// Minimum height, chosen to fit a title plus a two-line subtitle, so
+  /// sibling cards line up whether their subtitle wraps or not. It's a
+  /// minimum rather than a fixed height so the card can still grow (e.g.
+  /// with a larger system text size) instead of overflowing.
+  final double minHeight;
+
   const OptionCard({
     super.key,
     required this.title,
@@ -23,6 +29,7 @@ class OptionCard extends StatelessWidget {
     required this.color,
     required this.onTap,
     this.width = 280,
+    this.minHeight = 108,
   });
 
   @override
@@ -34,6 +41,7 @@ class OptionCard extends StatelessWidget {
         borderRadius: AppRadii.lgAll,
         semanticLabel: '$title. $subtitle',
         child: GlassContainer(
+          constraints: BoxConstraints(minHeight: minHeight),
           blur: 0,
           borderColor: color.withValues(alpha: 0.6),
           gradient: LinearGradient(
@@ -78,6 +86,8 @@ class OptionCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,

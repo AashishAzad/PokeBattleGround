@@ -78,6 +78,10 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
   Size _arenaSize = const Size(320, 400);
   bool _battleFinished = false;
 
+  // The real arena size is only known at first layout, so starting
+  // positions are assigned there (see _spreadBubbles), not in initState.
+  bool _bubblesSpread = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,10 +91,7 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
           id: bubble.id,
           type: bubble.type,
           power: bubble.power.toDouble(),
-          position: Offset(
-            _random.nextDouble() * _arenaSize.width,
-            _random.nextDouble() * _arenaSize.height,
-          ),
+          position: Offset.zero,
           velocity: _randomVelocity(),
         ),
       );
@@ -101,7 +102,47 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
     if (widget.result.events.isEmpty) {
       _battleFinished = true;
     } else {
-      _startEventPlayback();
+      // Wait one frame so the first clash animates from the spread-out
+      // starting positions rather than from placeholder ones.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startEventPlayback();
+      });
+    }
+  }
+
+  /// Places bubbles evenly over the whole arena: a grid whose column/row
+  /// count follows the arena's aspect ratio, with slots shuffled (so one
+  /// type doesn't bunch up) and a little jitter (so it doesn't look rigid).
+  void _spreadBubbles(Size size) {
+    final count = _bubbles.length;
+    if (count == 0) return;
+
+    const r = _bubbleRadius;
+    final usableW = max(size.width - 2 * r, 0.0);
+    final usableH = max(size.height - 2 * r, 0.0);
+    final aspect = usableH == 0 ? 1.0 : usableW / usableH;
+    final cols = max(1, min(count, sqrt(count * aspect).ceil()));
+    final rows = (count / cols).ceil();
+    final cellW = usableW / cols;
+    final cellH = usableH / rows;
+
+    final slots = List<int>.generate(cols * rows, (i) => i)..shuffle(_random);
+    for (var i = 0; i < count; i++) {
+      final slot = slots[i];
+      final jitter = Offset(
+        (_random.nextDouble() - 0.5) * cellW * 0.4,
+        (_random.nextDouble() - 0.5) * cellH * 0.4,
+      );
+      final center =
+          Offset(
+            r + cellW * (slot % cols + 0.5),
+            r + cellH * (slot ~/ cols + 0.5),
+          ) +
+          jitter;
+      _bubbles[i].position = Offset(
+        center.dx.clamp(r, max(r, size.width - r)),
+        center.dy.clamp(r, max(r, size.height - r)),
+      );
     }
   }
 
@@ -287,6 +328,10 @@ class _BubbleArenaViewState extends State<BubbleArenaView>
                 ? constraints.maxHeight
                 : 400.0;
             _arenaSize = Size(width, height);
+            if (!_bubblesSpread) {
+              _bubblesSpread = true;
+              _spreadBubbles(_arenaSize);
+            }
 
             // No backdrop blur here: the arena repaints every frame, and a
             // live blur underneath would cost far more than it adds.
