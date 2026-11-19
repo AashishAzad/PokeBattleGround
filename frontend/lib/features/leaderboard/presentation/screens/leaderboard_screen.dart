@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../providers/leaderboard_providers.dart';
 
 class LeaderboardScreen extends StatelessWidget {
@@ -18,12 +21,30 @@ class LeaderboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: _tabs.length,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Leaderboard'),
-          bottom: TabBar(
-            isScrollable: true,
-            tabs: _tabs.map((t) => Tab(text: t.$1)).toList(),
+      child: GlassScaffold(
+        title: 'Leaderboard',
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(64),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.sm + 4,
+            ),
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.glassFillSubtle,
+                borderRadius: AppRadii.pillAll,
+                border: Border.all(color: AppColors.glassBorder),
+              ),
+              child: TabBar(
+                isScrollable: true,
+                tabs: _tabs.map((t) => Tab(text: t.$1)).toList(),
+              ),
+            ),
           ),
         ),
         body: TabBarView(
@@ -38,6 +59,47 @@ class LeaderboardScreen extends StatelessWidget {
   }
 }
 
+/// Shared list chrome for every tab: width-capped, pull-to-refresh, and
+/// rows that slide in one after another.
+class _RankingList extends StatelessWidget {
+  final int itemCount;
+  final Widget Function(int index) itemBuilder;
+  final Future<void> Function() onRefresh;
+
+  const _RankingList({
+    required this.itemCount,
+    required this.itemBuilder,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      color: AppColors.electricYellow,
+      backgroundColor: AppColors.backgroundHigh,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: AppBreakpoints.contentMaxWidth,
+          ),
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            itemCount: itemCount,
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+            itemBuilder: (context, index) => EntranceAnimation(
+              // Cap the stagger so long lists don't take ages to appear.
+              delay: Duration(milliseconds: 40 * index.clamp(0, 10)),
+              child: itemBuilder(index),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GlobalRankingTab extends ConsumerWidget {
   const _GlobalRankingTab();
 
@@ -46,25 +108,24 @@ class _GlobalRankingTab extends ConsumerWidget {
     final rankingAsync = ref.watch(globalRankingProvider);
 
     return rankingAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('Failed to load: $err')),
+      loading: () => const LoadingView(),
+      error: (err, _) => ErrorView(
+        message: 'Failed to load: $err',
+        onRetry: () => ref.invalidate(globalRankingProvider),
+      ),
       data: (entries) {
         if (entries.isEmpty) {
-          return const Center(
-            child: Text('No scores yet — go play something!'),
-          );
+          return const EmptyView(message: 'No scores yet — go play something!');
         }
-        return ListView.builder(
+        return _RankingList(
           itemCount: entries.length,
-          itemBuilder: (context, index) {
+          onRefresh: () => ref.refresh(globalRankingProvider.future),
+          itemBuilder: (index) {
             final entry = entries[index];
-            return ListTile(
-              leading: CircleAvatar(child: Text('${index + 1}')),
-              title: Text(entry.username),
-              trailing: Text(
-                entry.weightedScore.toStringAsFixed(0),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+            return PlayerTile(
+              rank: index + 1,
+              username: entry.username,
+              trailing: entry.weightedScore.toStringAsFixed(0),
             );
           },
         );
@@ -80,31 +141,29 @@ class _GameLeaderboardTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final leaderboardAsync = ref.watch(gameLeaderboardProvider(gameType));
+    final provider = gameLeaderboardProvider(gameType);
+    final leaderboardAsync = ref.watch(provider);
 
     return leaderboardAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('Failed to load: $err')),
+      loading: () => const LoadingView(),
+      error: (err, _) => ErrorView(
+        message: 'Failed to load: $err',
+        onRetry: () => ref.invalidate(provider),
+      ),
       data: (entries) {
         if (entries.isEmpty) {
-          return const Center(
-            child: Text('No scores yet — go play this game!'),
-          );
+          return const EmptyView(message: 'No scores yet — go play this game!');
         }
-        return ListView.builder(
+        return _RankingList(
           itemCount: entries.length,
-          itemBuilder: (context, index) {
+          onRefresh: () => ref.refresh(provider.future),
+          itemBuilder: (index) {
             final entry = entries[index];
-            return ListTile(
-              leading: CircleAvatar(child: Text('${index + 1}')),
-              title: Text(entry.username),
-              subtitle: Text(
-                entry.mode == 'multi' ? 'Multiplayer' : 'Single player',
-              ),
-              trailing: Text(
-                '${entry.score}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+            return PlayerTile(
+              rank: index + 1,
+              username: entry.username,
+              subtitle: entry.mode == 'multi' ? 'Multiplayer' : 'Single player',
+              trailing: '${entry.score}',
             );
           },
         );

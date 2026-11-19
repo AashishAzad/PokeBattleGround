@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../../user/data/models/app_user.dart';
 import '../../../user/presentation/providers/current_user_provider.dart';
 import '../providers/who_is_that_pokemon_game_notifier.dart';
@@ -19,11 +21,11 @@ class WhoIsThatPokemonScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(currentUserProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Who Is That Pokémon?')),
+    return GlassScaffold(
+      title: 'Who Is That Pokémon?',
       body: userAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Failed to load profile: $err')),
+        loading: () => const LoadingView(),
+        error: (err, _) => ErrorView(message: 'Failed to load profile: $err'),
         data: (user) => _WitpBody(user: user),
       ),
     );
@@ -43,7 +45,7 @@ class _WitpBody extends ConsumerWidget {
     if (gameState.phase == WitpPhase.choosingToJoin) {
       // Kick off joining the lobby as soon as the screen opens.
       WidgetsBinding.instance.addPostFrameCallback((_) => notifier.joinLobby());
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingView(message: 'Joining the lobby...');
     }
 
     final Widget content;
@@ -64,19 +66,21 @@ class _WitpBody extends ConsumerWidget {
               key: ValueKey(gameState.currentRound!.pokemonId),
               round: gameState.currentRound!,
             ),
-            const SizedBox(height: 16),
-            if (gameState.hasGuessedCorrectly)
-              Text(
-                'Correct! +${gameState.myRoundScore} points',
-                style: const TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              )
-            else
-              GuessInputBar(enabled: true, onSubmit: notifier.submitGuess),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
+            AnimatedSwitcher(
+              duration: AppDurations.medium,
+              child: gameState.hasGuessedCorrectly
+                  ? MessageBanner.success(
+                      'Correct! +${gameState.myRoundScore} points',
+                      key: const ValueKey('correct'),
+                    )
+                  : GuessInputBar(
+                      key: const ValueKey('input'),
+                      enabled: true,
+                      onSubmit: notifier.submitGuess,
+                    ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             CorrectGuessFeed(guesses: gameState.recentCorrectGuesses),
           ],
         );
@@ -93,32 +97,27 @@ class _WitpBody extends ConsumerWidget {
         );
         break;
       case WitpPhase.error:
-        content = Text('Error: ${gameState.errorMessage}');
+        content = ErrorView(message: '${gameState.errorMessage}');
         break;
     }
 
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (gameState.errorMessage != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  gameState.errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-              const SizedBox(height: 16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: AppBreakpoints.contentMaxWidth,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (gameState.errorMessage != null) ...[
+                MessageBanner.error(gameState.errorMessage!),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              content,
             ],
-            content,
-          ],
+          ),
         ),
       ),
     );

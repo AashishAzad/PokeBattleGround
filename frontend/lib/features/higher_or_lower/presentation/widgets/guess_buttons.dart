@@ -1,72 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/theme/app_gradients.dart';
+import '../../../../core/widgets/widgets.dart';
 
 /// Two big thumb-friendly buttons for choosing higher or lower. Disabled
 /// while [enabled] is false (e.g. mid-network-call) to prevent a fast
 /// double-tap from submitting two guesses for one round.
+///
+/// On keyboards, ↑ guesses higher and ↓ guesses lower.
 class GuessButtons extends StatelessWidget {
   final bool enabled;
   final ValueChanged<String> onGuess;
 
-  const GuessButtons({
-    super.key,
-    required this.enabled,
-    required this.onGuess,
-  });
+  const GuessButtons({super.key, required this.enabled, required this.onGuess});
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _GuessButton(
-            label: 'Lower',
-            icon: Icons.arrow_downward,
-            color: Colors.redAccent,
-            enabled: enabled,
-            onPressed: () => onGuess('lower'),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _GuessButton(
-            label: 'Higher',
-            icon: Icons.arrow_upward,
-            color: Colors.green,
-            enabled: enabled,
-            onPressed: () => onGuess('higher'),
-          ),
-        ),
-      ],
-    );
+  void _guess(String value) {
+    if (enabled) onGuess(value);
   }
-}
-
-class _GuessButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool enabled;
-  final VoidCallback onPressed;
-
-  const _GuessButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.enabled,
-    required this.onPressed,
-  });
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: enabled ? onPressed : null,
-      icon: Icon(icon),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+            _guess('higher'),
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+            _guess('lower'),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Row(
+          children: [
+            Expanded(
+              child: GradientButton(
+                label: 'LOWER',
+                icon: Icons.arrow_downward_rounded,
+                gradient: AppGradients.danger,
+                height: 64,
+                fontSize: 18,
+                onPressed: enabled ? () => onGuess('lower') : null,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: GradientButton(
+                label: 'HIGHER',
+                icon: Icons.arrow_upward_rounded,
+                gradient: AppGradients.success,
+                height: 64,
+                fontSize: 18,
+                onPressed: enabled ? () => onGuess('higher') : null,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

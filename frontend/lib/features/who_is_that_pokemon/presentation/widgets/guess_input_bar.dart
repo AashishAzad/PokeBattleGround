@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/theme/app_gradients.dart';
+import '../../../../core/widgets/widgets.dart';
+
 class GuessInputBar extends StatefulWidget {
   final bool enabled;
   final ValueChanged<String> onSubmit;
@@ -39,17 +43,20 @@ class _GuessInputBarState extends State<GuessInputBar> {
             controller: _controller,
             enabled: widget.enabled,
             textInputAction: TextInputAction.done,
+            textCapitalization: TextCapitalization.words,
             onSubmitted: (_) => _submit(),
             decoration: const InputDecoration(
               hintText: "Who's that Pokémon?",
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.catching_pokemon),
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        ElevatedButton(
+        const SizedBox(width: AppSpacing.sm + 2),
+        GradientButton(
+          label: 'Guess',
+          icon: Icons.send_rounded,
+          gradient: AppGradients.pokeBall,
           onPressed: widget.enabled ? _submit : null,
-          child: const Text('Guess'),
         ),
       ],
     );
